@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
             BranchSeeder::class,
             UserSeeder::class,
             ContainerSeeder::class,
-            PackageSeeder::class,
+            GaParameterSeeder::class,
         ]);
     }
 }

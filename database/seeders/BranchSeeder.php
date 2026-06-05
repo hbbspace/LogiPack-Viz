@@ -11,18 +11,32 @@ class BranchSeeder extends Seeder
     {
         $branches = [
             [
+                'code' => 'MLG01',
+                'city' => 'Malang',
+                'address' => 'Jl. Merdeka Selatan No.5, Kauman, Kec. Klojen, Kota Malang, Jawa Timur 65119',
+                'phone' => '62 859-5247-6164',
+                'is_active' => true,
+            ],
+            [
+                'code' => 'MLG02',
+                'city' => 'Malang',
+                'address' => 'Kasin, Kec. Klojen, Kota Malang, Jawa Timur 65117',
+                'phone' => '034-1362255',
+                'is_active' => true,
+            ],
+            [
                 'code' => 'SUB01',
                 'city' => 'Surabaya',
-                'address' => 'Jl. Raya Darmo No. 123, Surabaya, Jawa Timur',
-                'phone' => '031-1234567',
-                'is_active' => true,
+                'address' => 'Jl. Kebon Rojo No.10, Krembangan Sel., Kec. Krembangan, Surabaya, Jawa Timur 60175',
+                'phone' => '031-3522096',
+                'is_active' => false,
             ],
             [
                 'code' => 'JKT01',
                 'city' => 'Jakarta',
-                'address' => 'Jl. Sudirman No. 45, Jakarta Pusat, DKI Jakarta',
-                'phone' => '021-7654321',
-                'is_active' => true,
+                'address' => 'Jl. Lap. Banteng Utara No.1, Ps. Baru, Kecamatan Sawah Besar, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10710',
+                'phone' => '021-3520037',
+                'is_active' => false,
             ],
         ];
 

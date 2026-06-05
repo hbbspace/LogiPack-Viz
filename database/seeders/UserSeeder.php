@@ -11,6 +11,8 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $mlg01 = Branch::where('code', 'MLG01')->first();
+        $mlg02 = Branch::where('code', 'MLG02')->first();
         $sub01 = Branch::where('code', 'SUB01')->first();
         $jkt01 = Branch::where('code', 'JKT01')->first();
 
@@ -28,6 +30,33 @@ class UserSeeder extends Seeder
             'last_activity_at' => null,
         ]);
 
+        // User di branch MLG01
+        User::create([
+            'username' => 'user_mlg01',
+            'password' => Hash::make('user123'),
+            'name' => 'Petugas KCU Malang',
+            'email' => 'mlg01@logistic.com',
+            'phone' => '085952476164',
+            'level' => 'user',
+            'is_active' => true,
+            'branch_id' => $mlg01->id,
+            'last_login_at' => null,
+            'last_activity_at' => null,
+        ]);
+        // User di branch MLG02
+        User::create([
+            'username' => 'user_mlg02',
+            'password' => Hash::make('user123'),
+            'name' => 'Petugas Cabang Malang',
+            'email' => 'mlg02@logistic.com',
+            'phone' => '081234567891',
+            'level' => 'user',
+            'is_active' => true,
+            'branch_id' => $mlg02->id,
+            'last_login_at' => null,
+            'last_activity_at' => null,
+        ]);
+
         // User di branch SUB01
         User::create([
             'username' => 'user_sub01',
@@ -36,7 +65,7 @@ class UserSeeder extends Seeder
             'email' => 'sub01@logistic.com',
             'phone' => '081234567891',
             'level' => 'user',
-            'is_active' => true,
+            'is_active' => false,
             'branch_id' => $sub01->id,
             'last_login_at' => null,
             'last_activity_at' => null,
@@ -50,7 +79,7 @@ class UserSeeder extends Seeder
             'email' => 'jkt01@logistic.com',
             'phone' => '081234567892',
             'level' => 'user',
-            'is_active' => true,
+            'is_active' => false,
             'branch_id' => $jkt01->id,
             'last_login_at' => null,
             'last_activity_at' => null,

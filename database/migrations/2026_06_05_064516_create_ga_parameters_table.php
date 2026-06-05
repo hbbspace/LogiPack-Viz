@@ -18,8 +18,6 @@ return new class extends Migration
             $table->integer('generation_limit')->default(500);
             $table->float('crossover_rate')->default(0.8);
             $table->float('mutation_rate')->default(0.1);
-            $table->float('elite_percentage')->default(0.1);
-            $table->integer('tournament_size')->default(3);
             $table->boolean('is_active')->default(false);
             $table->timestamps();
             

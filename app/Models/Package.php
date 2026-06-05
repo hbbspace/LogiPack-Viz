@@ -11,20 +11,14 @@ class Package extends Model
 
     protected $fillable = [
         'tracking_number',
-        'shipper',
-        'shipper_address',
-        'recipient',
-        'recipient_address',
         'length',
         'width',
         'height',
         'volume',
         'weight',
         'status',
-        'delivered_at',
         'notes',
-        'branch_origin_id',
-        'branch_destination_id',
+        'batch_import_id',
         'created_by',
         'updated_by'
     ];
@@ -33,7 +27,7 @@ class Package extends Model
         'length' => 'integer',
         'width' => 'integer',
         'height' => 'integer',
-        'volume' => 'integer',
+        'volume' => 'decimal:2',
         'weight' => 'decimal:2',
         'delivered_at' => 'datetime',
         'created_at' => 'datetime',
@@ -58,14 +52,9 @@ class Package extends Model
     }
 
     // Relationships
-    public function branchOrigin()
+    public function batchImport()
     {
-        return $this->belongsTo(Branch::class, 'branch_origin_id');
-    }
-
-    public function branchDestination()
-    {
-        return $this->belongsTo(Branch::class, 'branch_destination_id');
+        return $this->belongsTo(BatchImport::class);
     }
 
     public function packingPackages()
@@ -94,22 +83,6 @@ class Package extends Model
         return $query->where('status', 'packed');
     }
 
-    public function scopeDelivered($query)
-    {
-        return $query->where('status', 'delivered');
-    }
-
-    public function scopeByBranch($query, $branchId)
-    {
-        return $query->where('branch_origin_id', $branchId);
-    }
-
-    public function scopeAvailableForPacking($query, $branchId)
-    {
-        return $query->where('branch_origin_id', $branchId)
-                     ->where('status', 'pending');
-    }
-
     // Helper methods
     public function getDimensionsAttribute()
     {
@@ -128,13 +101,5 @@ class Package extends Model
     public function markAsPacked()
     {
         $this->update(['status' => 'packed']);
-    }
-
-    public function markAsDelivered()
-    {
-        $this->update([
-            'status' => 'delivered',
-            'delivered_at' => now()
-        ]);
     }
 }

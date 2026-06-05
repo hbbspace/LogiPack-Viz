@@ -14,16 +14,13 @@ class Packing extends Model
         'volume_utilization',
         'weight_utilization',
         'fitness_score',
-        'center_of_gravity_x',
-        'center_of_gravity_y',
-        'center_of_gravity_z',
+        'chromosome',
         'visualization_file_path',
-        'algorithm_params',
-        'raw_result',
+        'execution_time_ms',
         'notes',
         'container_id',
-        'branch_id',
         'user_id',
+        'ga_parameter_id',
         'created_by',
         'updated_by'
     ];
@@ -32,11 +29,8 @@ class Packing extends Model
         'volume_utilization' => 'decimal:2',
         'weight_utilization' => 'decimal:2',
         'fitness_score' => 'decimal:2',
-        'center_of_gravity_x' => 'decimal:2',
-        'center_of_gravity_y' => 'decimal:2',
-        'center_of_gravity_z' => 'decimal:2',
-        'algorithm_params' => 'array',
-        'raw_result' => 'array',
+        'chromosome' => 'array',
+        'execution_time_ms' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -55,6 +49,11 @@ class Packing extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function gaParameter()
+    {
+        return $this->belongsTo(GaParameter::class);
     }
 
     public function packingPackages()
@@ -82,11 +81,6 @@ class Packing extends Model
                     ->wherePivot('is_placed', false);
     }
 
-    public function delivery()
-    {
-        return $this->hasOne(Delivery::class);
-    }
-
     public function gaHistories()
     {
         return $this->hasMany(PackingGaHistory::class);
@@ -103,11 +97,6 @@ class Packing extends Model
     }
 
     // Scopes
-    public function scopeByBranch($query, $branchId)
-    {
-        return $query->where('branch_id', $branchId);
-    }
-
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
@@ -116,20 +105,5 @@ class Packing extends Model
     public function scopeHighFitness($query, $threshold = 90)
     {
         return $query->where('fitness_score', '>=', $threshold);
-    }
-
-    // Helper methods
-    public function getCenterOfGravityAttribute()
-    {
-        return [
-            'x' => $this->center_of_gravity_x,
-            'y' => $this->center_of_gravity_y,
-            'z' => $this->center_of_gravity_z
-        ];
-    }
-
-    public function isDelivered()
-    {
-        return $this->delivery()->exists() && $this->delivery->status === 'completed';
     }
 }
