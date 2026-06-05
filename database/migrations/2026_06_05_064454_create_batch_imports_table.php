@@ -16,15 +16,12 @@ return new class extends Migration
             $table->string('file_path');
             $table->string('original_name');
             $table->integer('total_packages')->default(0);
-            $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
-            $table->text('error_message')->nullable();
             $table->timestamps();
             
             // Relasi ke user yang upload
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             
-            $table->index('status');
             $table->index('user_id');
         });
     }

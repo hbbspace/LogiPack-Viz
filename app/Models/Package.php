@@ -24,9 +24,9 @@ class Package extends Model
     ];
 
     protected $casts = [
-        'length' => 'integer',
-        'width' => 'integer',
-        'height' => 'integer',
+        'length' => 'decimal:2',
+        'width' => 'decimal:2',
+        'height' => 'decimal:2',
         'volume' => 'decimal:2',
         'weight' => 'decimal:2',
         'delivered_at' => 'datetime',

@@ -15,10 +15,10 @@ return new class extends Migration
             $table->text('shipper_address');
             $table->string('recipient', 200);
             $table->text('recipient_address');
-            $table->integer('length')->comment('Panjang dalam cm');
-            $table->integer('width')->comment('Lebar dalam cm');
-            $table->integer('height')->comment('Tinggi dalam cm');
-            $table->integer('volume')->comment('Volume dalam cm³ (auto-calculate)');
+            $table->decimal('length', 10, 2)->comment('Panjang dalam cm');
+            $table->decimal('width', 10, 2)->comment('Lebar dalam cm');
+            $table->decimal('height', 10, 2)->comment('Tinggi dalam cm');
+            $table->decimal('volume', 10, 2)->comment('Volume dalam cm³ (auto-calculate)');
             $table->decimal('weight', 10, 2)->comment('Berat dalam kg');
             $table->enum('status', ['pending', 'packed'])->default('pending');
             $table->timestamp('delivered_at')->nullable();

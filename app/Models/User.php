@@ -95,6 +95,18 @@ class User extends Authenticatable
         return $query->where('branch_id', $branchId);
     }
 
+    // Relasi ke batch_imports
+    public function batchImports()
+    {
+        return $this->hasMany(BatchImport::class);
+    }
+
+    // Relasi ke packages (via batch_imports)
+    public function packages()
+    {
+        return $this->hasManyThrough(Package::class, BatchImport::class);
+    }
+
     // Helper methods
     public function isAdmin()
     {

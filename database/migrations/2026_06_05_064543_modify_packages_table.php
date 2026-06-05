@@ -25,7 +25,7 @@ return new class extends Migration
             $table->unsignedBigInteger('batch_import_id')->nullable()->after('id');
             
             // Foreign key ke batch_imports
-            $table->foreign('batch_import_id')->references('id')->on('batch_imports')->onDelete('set null');
+            $table->foreign('batch_import_id')->references('id')->on('batch_imports')->onDelete('cascade');
         });
     }
 

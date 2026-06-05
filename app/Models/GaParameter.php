@@ -17,8 +17,6 @@ class GaParameter extends Model
         'generation_limit',
         'crossover_rate',
         'mutation_rate',
-        'elite_percentage',
-        'tournament_size',
         'is_active',
         'created_by',
         'updated_by'
@@ -29,8 +27,6 @@ class GaParameter extends Model
         'generation_limit' => 'integer',
         'crossover_rate' => 'float',
         'mutation_rate' => 'float',
-        'elite_percentage' => 'float',
-        'tournament_size' => 'integer',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
@@ -93,8 +89,6 @@ class GaParameter extends Model
             'Generation Limit' => number_format($this->generation_limit),
             'Crossover Rate' => ($this->crossover_rate * 100) . '%',
             'Mutation Rate' => ($this->mutation_rate * 100) . '%',
-            'Elite Percentage' => ($this->elite_percentage * 100) . '%',
-            'Tournament Size' => $this->tournament_size,
         ];
     }
 
