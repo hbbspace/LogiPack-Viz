@@ -25,20 +25,17 @@ return new class extends Migration
             
             // Foreign keys
             $table->unsignedBigInteger('container_id');
-            $table->unsignedBigInteger('branch_id')->comment('Cabang tempat packing dilakukan');
             $table->unsignedBigInteger('user_id')->comment('User yang melakukan packing');
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             
             // Foreign key constraints
             $table->foreign('container_id')->references('id')->on('containers')->onDelete('restrict');
-            $table->foreign('branch_id')->references('id')->on('branches')->onDelete('restrict');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
             
             $table->index('container_id');
-            $table->index('branch_id');
             $table->index('user_id');
             $table->index('created_at');
             $table->index('fitness_score');
