@@ -2,14 +2,38 @@
 
 @section('title', 'Login - PosLogistik')
 
+@section('styles')
+<style>
+    .login-bg {
+        background-image: url('{{ asset("images/Background.JPG") }}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: relative;
+    }
+    .login-bg::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.4);
+        z-index: 1;
+    }
+    .login-card {
+        position: relative;
+        z-index: 2;
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style="background: linear-gradient(135deg, #FF0000 0%, #0066B3 100%);">
-    <div class="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-2xl p-8">
+<div class="login-bg fixed inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <div class="login-card max-w-md w-full space-y-8 bg-white rounded-2xl shadow-2xl p-8">
         <div>
             <div class="flex justify-center">
-                <div class="w-20 h-20 bg-pos-red rounded-full flex items-center justify-center shadow-lg">
-                    <span class="text-white font-bold text-3xl">P</span>
-                </div>
+                <img src="{{ asset('images/Logo.png') }}" alt="PosLogistik Logo" class="w-20 h-20 object-contain">
             </div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
                 Pos<span class="text-pos-red">Logistik</span>
@@ -42,17 +66,17 @@
 
             <div>
                 <button type="submit" 
-                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-pos-red hover-bg-pos-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pos-red transition">
+                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-pos-red hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pos-red transition">
                     Masuk
                 </button>
             </div>
         </form>
         
-        <div class="text-center text-xs text-gray-500">
+        {{-- <div class="text-center text-xs text-gray-500">
             <p>Demo Account:</p>
             <p>Admin: admin / admin123</p>
-            <p>User SUB01: user_sub01 / user123</p>
-        </div>
+            <p>User MLG01: user_mlg01 / user123</p>
+        </div> --}}
     </div>
 </div>
 @endsection

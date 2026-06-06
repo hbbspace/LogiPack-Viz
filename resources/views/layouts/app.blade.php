@@ -15,6 +15,20 @@
         .border-pos-red { border-color: #FF0000; }
         .hover-bg-pos-red:hover { background-color: #CC0000; }
         .hover-bg-pos-blue:hover { background-color: #004C8C; }
+        
+        /* Perbaikan hover untuk navigasi */
+        .nav-link {
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .nav-link:hover {
+            color: #FF0000 !important;
+            background-color: #FEF2F2 !important;
+        }
+        .nav-link.active {
+            color: #FF0000 !important;
+            border-bottom: 2px solid #FF0000;
+        }
     </style>
     @yield('styles')
 </head>
@@ -25,18 +39,28 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center space-x-8">
                     <div class="flex items-center space-x-2">
-                        <div class="w-10 h-10 bg-pos-red rounded-full flex items-center justify-center">
+                        {{-- <div class="w-10 h-10 bg-pos-red rounded-full flex items-center justify-center">
                             <span class="text-white font-bold text-xl">P</span>
-                        </div>
+                        </div> --}}
                         <span class="font-bold text-xl text-gray-800">Pos<span class="text-pos-red">Logistik</span></span>
                     </div>
-                    <div class="hidden md:flex space-x-4">
-                        <a href="{{ route('dashboard') }}" class="text-gray-700 hover:text-pos-red px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                        <a href="{{ route('packing.index') }}" class="text-gray-700 hover:text-pos-red px-3 py-2 rounded-md text-sm font-medium">Penataan Paket</a>
-                        <a href="{{ route('packing.history') }}" class="text-gray-700 hover:text-pos-red px-3 py-2 rounded-md text-sm font-medium">Riwayat</a>
-                        @if(auth()->user()->isAdmin())
-                        <a href="{{ route('admin.dashboard') }}" class="text-gray-700 hover:text-pos-red px-3 py-2 rounded-md text-sm font-medium">Admin Panel</a>
-                        @endif
+                    <div class="hidden md:flex space-x-1">
+                            <a href="{{ route('dashboard') }}" 
+                               class="nav-link px-4 py-2 rounded-md text-sm font-medium text-gray-700 {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                                Dashboard
+                            </a>
+                            <a href="{{ route('upload.index') }}" 
+                               class="nav-link px-4 py-2 rounded-md text-sm font-medium text-gray-700 {{ request()->routeIs('upload.*') ? 'active' : '' }}">
+                                Upload File
+                            </a>
+                            <a href="{{ route('packing.index') }}" 
+                               class="nav-link px-4 py-2 rounded-md text-sm font-medium text-gray-700 {{ request()->routeIs('packing.index') ? 'active' : '' }}">
+                                Penataan Paket
+                            </a>
+                            <a href="{{ route('packing.history') }}" 
+                               class="nav-link px-4 py-2 rounded-md text-sm font-medium text-gray-700 {{ request()->routeIs('packing.history') ? 'active' : '' }}">
+                                Riwayat
+                            </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -67,6 +91,12 @@
             @if(session('error'))
                 <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded" role="alert">
                     <p>{{ session('error') }}</p>
+                </div>
+            @endif
+            
+            @if(session('warning'))
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded" role="alert">
+                    <p>{{ session('warning') }}</p>
                 </div>
             @endif
 
