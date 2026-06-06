@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('packages', function (Blueprint $table) {
             $table->id();
-            $table->string('tracking_number', 50)->unique();
+            $table->string('tracking_number', 10);
             $table->string('shipper', 200);
             $table->text('shipper_address');
             $table->string('recipient', 200);

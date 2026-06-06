@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('packing_ga_history', function (Blueprint $table) {
             $table->id();
             $table->integer('generation');
-            $table->json('chromosome')->comment('Representasi kromosom dalam JSON');
+            // $table->json('chromosome')->nullable()->comment('Representasi kromosom dalam JSON');
             $table->decimal('fitness_score', 10, 2);
             $table->decimal('volume_utilization', 5, 2);
             $table->timestamps();

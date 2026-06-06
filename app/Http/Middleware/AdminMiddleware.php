@@ -11,7 +11,8 @@ class AdminMiddleware
     public function handle(Request $request, Closure $next)
     {
         if (!Auth::check() || !Auth::user()->isAdmin()) {
-            abort(403, 'Unauthorized access. Admin only.');
+            return redirect()->route('dashboard')
+                ->with('error', 'User tidak memiliki akses ke halaman Admin.');
         }
         
         return $next($request);

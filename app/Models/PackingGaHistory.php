@@ -14,7 +14,7 @@ class PackingGaHistory extends Model
     protected $fillable = [
         'packing_id',
         'generation',
-        'chromosome',
+        // 'chromosome',
         'fitness_score',
         'volume_utilization'
     ];
