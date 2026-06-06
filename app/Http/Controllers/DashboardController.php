@@ -5,53 +5,48 @@ namespace App\Http\Controllers;
 use App\Models\Package;
 use App\Models\Container;
 use App\Models\Packing;
+use App\Models\BatchImport;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // Gunakan Auth::user() bukan auth()->user()
         $user = Auth::user();
         
-        // Cek jika user tidak login
         if (!$user) {
             return redirect()->route('login');
         }
         
-        // Jika user adalah admin, tampilkan semua data
+        // Jika user adalah admin, tampilkan admin dashboard
         if ($user->isAdmin()) {
-            $pendingPackages = Package::where('status', 'pending')->count();
-            $totalPackings = Packing::count();
-            $availableContainers = Container::where('is_active', true)->count();
-            $recentPackings = Packing::with('container', 'branch')
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get();
-        } else {
-            // User biasa hanya melihat data di branch-nya
-            // Gunakan optional() untuk menghindari error jika branch_id null
-            $branchId = $user->branch_id;
-            
-            if ($branchId) {
-                $pendingPackages = Package::where('branch_origin_id', $branchId)
-                    ->where('status', 'pending')
-                    ->count();
-                $totalPackings = Packing::where('branch_id', $branchId)->count();
-                $recentPackings = Packing::where('branch_id', $branchId)
-                    ->with('container')
-                    ->orderBy('created_at', 'desc')
-                    ->limit(5)
-                    ->get();
-            } else {
-                $pendingPackages = 0;
-                $totalPackings = 0;
-                $recentPackings = collect();
-            }
-            $availableContainers = Container::where('is_active', true)->count();
+            return redirect()->route('admin.dashboard');
         }
         
-        return view('dashboard', compact('pendingPackages', 'totalPackings', 'availableContainers', 'recentPackings'));
+        // User biasa: dashboard berdasarkan batch import miliknya
+        $batchImports = BatchImport::where('user_id', $user->id)->get();
+        $totalPackages = Package::whereHas('batchImport', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->count();
+        
+        $pendingPackages = Package::whereHas('batchImport', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->where('status', 'pending')->count();
+        
+        $totalPackings = Packing::where('user_id', $user->id)->count();
+        $availableContainers = Container::where('is_active', true)->count();
+        
+        $recentPackings = Packing::where('user_id', $user->id)
+            ->with('container')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        return view('dashboard', compact(
+            'totalPackages', 'pendingPackages', 'totalPackings', 
+            'availableContainers', 'recentPackings', 'batchImports'
+        ));
     }
     
     public function adminDashboard()
@@ -59,13 +54,31 @@ class DashboardController extends Controller
         $totalPackages = Package::count();
         $pendingPackages = Package::where('status', 'pending')->count();
         $totalPackings = Packing::count();
-        $totalDeliveries = \App\Models\Delivery::count();
+        $totalBatchImports = BatchImport::count();
+        $totalUsers = User::count();
         
-        $packingsByBranch = Packing::with('branch')
-            ->selectRaw('branch_id, COUNT(*) as total, AVG(volume_utilization) as avg_util')
-            ->groupBy('branch_id')
+        // GA Performance
+        $avgFitness = Packing::avg('fitness_score');
+        $avgVolumeUtil = Packing::avg('volume_utilization');
+        $avgWeightUtil = Packing::avg('weight_utilization');
+        
+        // Packing per user
+        $packingsByUser = Packing::with('user')
+            ->selectRaw('user_id, COUNT(*) as total, AVG(volume_utilization) as avg_util')
+            ->groupBy('user_id')
             ->get();
         
-        return view('admin.dashboard', compact('totalPackages', 'pendingPackages', 'totalPackings', 'totalDeliveries', 'packingsByBranch'));
+        // Packing per GA Parameter
+        $packingsByGaParam = Packing::with('gaParameter')
+            ->selectRaw('ga_parameter_id, COUNT(*) as total, AVG(fitness_score) as avg_fitness')
+            ->groupBy('ga_parameter_id')
+            ->get();
+        
+        return view('admin.dashboard', compact(
+            'totalPackages', 'pendingPackages', 'totalPackings', 
+            'totalBatchImports', 'totalUsers', 'avgFitness', 
+            'avgVolumeUtil', 'avgWeightUtil', 'packingsByUser',
+            'packingsByGaParam'
+        ));
     }
 }

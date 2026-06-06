@@ -6,32 +6,35 @@ use App\Models\Container;
 use App\Models\Package;
 use App\Models\Packing;
 use App\Models\PackingPackage;
+use App\Models\PackingGaHistory;
+use App\Models\BatchImport;
+use App\Models\GaParameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class PackingController extends Controller
 {
     public function index()
     {
-        $containers = Container::where('is_active', true)->get();
         $user = Auth::user();
+        $containers = Container::where('is_active', true)->get();
+        $activeGaParam = GaParameter::getActive() ?? GaParameter::getDefault();
         
-        // Cek jika user tidak login atau tidak punya branch
-        if (!$user || !$user->branch_id) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke branch manapun');
-        }
+        // Ambil semua batch import user yang memiliki package pending
+        $batchImports = BatchImport::where('user_id', $user->id)
+            ->with(['packages' => function($q) {
+                $q->where('status', 'pending');
+            }])
+            ->get()
+            ->filter(function($batch) {
+                return $batch->packages->count() > 0;
+            })
+            ->values();
         
-        $branchId = $user->branch_id;
-        
-        // Hanya tampilkan paket yang statusnya pending dan berasal dari branch user
-        $packages = Package::where('branch_origin_id', $branchId)
-            ->where('status', 'pending')
-            ->with('branchDestination')
-            ->get();
-        
-        return view('packing.index', compact('containers', 'packages'));
+        return view('packing.index', compact('containers', 'batchImports', 'activeGaParam'));
     }
     
     public function process(Request $request)
@@ -43,10 +46,25 @@ class PackingController extends Controller
         ]);
         
         $container = Container::findOrFail($request->container_id);
-        $packages = Package::whereIn('id', $request->package_ids)->get();
+        $packages = Package::whereIn('id', $request->package_ids)
+            ->where('status', 'pending')
+            ->get();
         
-        $numPackages = $packages->count();
-        $gaParams = $this->selectGAPreset($numPackages);
+        if ($packages->count() === 0) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => 'Paket yang dipilih sudah diproses atau tidak valid'], 400);
+            }
+            return back()->with('error', 'Paket yang dipilih sudah diproses atau tidak valid');
+        }
+        
+        $activeGaParam = GaParameter::getActive() ?? GaParameter::getDefault();
+        
+        if (!$activeGaParam) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => 'Tidak ada parameter GA yang aktif'], 400);
+            }
+            return back()->with('error', 'Tidak ada parameter GA yang aktif. Silakan hubungi admin.');
+        }
         
         $apiData = [
             'container' => [
@@ -64,79 +82,162 @@ class PackingController extends Controller
                     'weight' => (float) $pkg->weight,
                 ];
             })->toArray(),
-            'ga_params' => $gaParams,
+            'ga_params' => [
+                'population_size' => $activeGaParam->population_size,
+                'generations' => $activeGaParam->generation_limit,
+                'crossover_rate' => (float) $activeGaParam->crossover_rate,
+                'mutation_rate' => (float) $activeGaParam->mutation_rate,
+            ],
         ];
         
+        Log::info('Sending to API:', ['api_data' => $apiData]);
+        
         try {
-            $response = Http::timeout(config('ga.timeout', 60))
-                ->post(config('ga.api_url') . '/pack', $apiData);
+            $response = Http::timeout(config('ga.timeout', 300))
+                ->post(config('ga.api_url', 'http://localhost:8001') . '/pack', $apiData);
+            
+            Log::info('API Response Status: ' . $response->status());
             
             if ($response->successful()) {
                 $result = $response->json();
                 
+                Log::info('API Response keys: ' . json_encode(array_keys($result)));
+                
                 $user = Auth::user();
                 
-                $packing = Packing::create([
-                    'name' => 'Packing ' . now()->format('Y-m-d H:i:s'),
-                    'volume_utilization' => $result['volume_utilization'],
-                    'weight_utilization' => $result['weight_utilization'],
-                    'fitness_score' => $result['fitness'],
-                    'center_of_gravity_x' => $result['center_of_gravity'][0] ?? null,
-                    'center_of_gravity_y' => $result['center_of_gravity'][1] ?? null,
-                    'center_of_gravity_z' => $result['center_of_gravity'][2] ?? null,
-                    'visualization_file_path' => $result['visualization_html'] ?? null,
-                    'raw_result' => json_encode($result),
-                    'algorithm_params' => json_encode($gaParams),
-                    'container_id' => $container->id,
-                    'branch_id' => $user->branch_id,
-                    'user_id' => $user->id,
-                    'created_by' => $user->id,
-                ]);
+                DB::beginTransaction();
                 
-                foreach ($result['placed_packages'] as $placed) {
-                    $package = Package::where('tracking_number', $placed['id'])->first();
-                    if ($package) {
-                        PackingPackage::create([
-                            'packing_id' => $packing->id,
-                            'package_id' => $package->id,
-                            'is_placed' => true,
-                            'position_x' => $placed['x'],
-                            'position_y' => $placed['y'],
-                            'position_z' => $placed['z'],
-                            'orientation' => $placed['orientation'],
-                        ]);
-                        $package->markAsPacked();
+                try {
+                    // 1. Simpan ke tabel packings
+                    $packingData = [
+                        'name' => 'Packing ' . now()->format('Y-m-d H:i:s'),
+                        'volume_utilization' => $result['volume_utilization'] ?? 0,
+                        'weight_utilization' => $result['weight_utilization'] ?? 0,
+                        'fitness_score' => $result['fitness'] ?? 0,
+                        'chromosome' => isset($result['chromosome']) ? json_encode($result['chromosome']) : null,
+                        'visualization_file_path' => $result['visualization_html'] ?? null,
+                        'execution_time_ms' => isset($result['execution_time_seconds']) ? $result['execution_time_seconds'] * 1000 : null,
+                        'notes' => $result['message'] ?? null,
+                        'container_id' => $container->id,
+                        'user_id' => $user->id,
+                        'ga_parameter_id' => $activeGaParam->id,
+                        'created_by' => $user->id,
+                    ];
+                    
+                    Log::info('Attempting to save packing with data:', $packingData);
+                    
+                    $packing = Packing::create($packingData);
+                    
+                    Log::info('Packing saved successfully with ID: ' . $packing->id);
+                    
+                    // 2. Simpan placed packages ke packing_packages
+                    $placedPackages = $result['placed_packages'] ?? [];
+                    foreach ($placedPackages as $placed) {
+                        $package = Package::where('tracking_number', $placed['id'])->first();
+                        if ($package) {
+                            PackingPackage::create([
+                                'packing_id' => $packing->id,
+                                'package_id' => $package->id,
+                                'is_placed' => true,
+                                'position_x' => $placed['x'] ?? 0,
+                                'position_y' => $placed['y'] ?? 0,
+                                'position_z' => $placed['z'] ?? 0,
+                                'orientation' => $placed['orientation'] ?? 1,
+                            ]);
+                            $package->markAsPacked();
+                            Log::info('Package ' . $package->tracking_number . ' marked as packed');
+                        }
                     }
-                }
-                
-                foreach ($result['unplaced_packages'] as $unplacedId) {
-                    $package = Package::where('tracking_number', $unplacedId)->first();
-                    if ($package) {
-                        PackingPackage::create([
+                    
+                    // 3. Simpan unplaced packages ke packing_packages
+                    $unplacedPackages = $result['unplaced_packages'] ?? [];
+                    foreach ($unplacedPackages as $unplacedId) {
+                        $package = Package::where('tracking_number', $unplacedId)->first();
+                        if ($package) {
+                            PackingPackage::create([
+                                'packing_id' => $packing->id,
+                                'package_id' => $package->id,
+                                'is_placed' => false,
+                            ]);
+                            Log::info('Package ' . $package->tracking_number . ' marked as unplaced');
+                        }
+                    }
+                    
+                    // 4. Simpan GA History (tanpa chromosome)
+                    $history = $result['history'] ?? [];
+                    foreach ($history as $genData) {
+                        PackingGaHistory::create([
                             'packing_id' => $packing->id,
-                            'package_id' => $package->id,
-                            'is_placed' => false,
+                            'generation' => $genData['generation'],
+                            'fitness_score' => $genData['best_fitness'] ?? 0,
+                            'volume_utilization' => $genData['best_volume_utilization'] ?? 0,
                         ]);
                     }
+                    Log::info('Saved ' . count($history) . ' GA history records');
+                    
+                    DB::commit();
+                    
+                    // Response untuk AJAX request
+                    if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                        return response()->json([
+                            'success' => true,
+                            'redirect_url' => route('packing.result', $packing->id),
+                            'packing_id' => $packing->id
+                        ]);
+                    }
+                    
+                    return redirect()->route('packing.result', $packing->id)
+                        ->with('success', "Proses penataan berhasil! {$result['num_placed']}/{$result['total_packages']} paket terisi.");
+                    
+                } catch (\Exception $e) {
+                    DB::rollback();
+                    Log::error('Save Packing Error: ' . $e->getMessage());
+                    Log::error('Save Packing Trace: ' . $e->getTraceAsString());
+                    
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+                    }
+                    return back()->with('error', 'Gagal menyimpan hasil penataan: ' . $e->getMessage());
                 }
-                
-                return redirect()->route('packing.result', $packing->id)
-                    ->with('success', 'Proses penataan berhasil!');
             }
             
-            $errorMsg = $result['message'] ?? 'Unknown error';
+            $errorMsg = $response->json()['detail'] ?? $response->json()['message'] ?? 'Unknown error';
             Log::error('Packing API Error Response: ' . $errorMsg);
+            
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => $errorMsg], 500);
+            }
             return back()->with('error', 'Gagal memproses penataan: ' . $errorMsg);
             
         } catch (\Exception $e) {
             Log::error('Packing API Exception: ' . $e->getMessage());
+            Log::error('Packing API Trace: ' . $e->getTraceAsString());
+            
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
     
     public function result($id)
     {
-        $packing = Packing::with(['container', 'placedPackages', 'unplacedPackages'])->findOrFail($id);
+        $packing = Packing::with([
+            'container', 
+            'placedPackages', 
+            'unplacedPackages',
+            'gaParameter',
+            'gaHistories' => function($q) {
+                $q->orderBy('generation', 'asc');
+            }
+        ])->findOrFail($id);
+
+        $user = Auth::user();
+    
+        if (!$user->isAdmin() && $packing->user_id !== $user->id) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Anda tidak memiliki akses ke hasil penataan ini.');
+        }
         
         return view('packing.result', compact('packing'));
     }
@@ -150,35 +251,16 @@ class PackingController extends Controller
         }
         
         if ($user->isAdmin()) {
-            $packings = Packing::with(['container', 'branch', 'user'])
+            $packings = Packing::with(['container', 'user', 'gaParameter'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
         } else {
-            $branchId = $user->branch_id;
-            $packings = Packing::where('branch_id', $branchId)
-                ->with('container')
+            $packings = Packing::where('user_id', $user->id)
+                ->with(['container', 'gaParameter'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
         }
         
         return view('packing.history', compact('packings'));
-    }
-    
-    private function selectGAPreset($numPackages)
-    {
-        $presets = config('ga.presets');
-        
-        foreach ($presets as $preset) {
-            if ($numPackages <= $preset['max_packages']) {
-                return [
-                    'population_size' => $preset['population_size'],
-                    'generations' => $preset['generations'],
-                    'crossover_rate' => $preset['crossover_rate'],
-                    'mutation_rate' => $preset['mutation_rate'],
-                ];
-            }
-        }
-        
-        return $presets['large'];
     }
 }
