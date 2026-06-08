@@ -100,6 +100,10 @@ class Package extends Model
 
     public function markAsPacked()
     {
-        $this->update(['status' => 'packed']);
+        if ($this->status === 'pending') {
+            $this->update(['status' => 'packed']);
+            return true;
+        }
+        return false;
     }
 }

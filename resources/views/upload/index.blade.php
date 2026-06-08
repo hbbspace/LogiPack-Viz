@@ -25,7 +25,7 @@
             @csrf
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-pos-red transition">
                 <div class="text-5xl mb-3">📁</div>
-                <p class="text-gray-600 mb-2">Klik atau drag & drop file CSV di sini</p>
+                <p class="text-gray-600 mb-2">Upload file CSV di sini</p>
                 <p class="text-xs text-gray-400">Format: CSV dengan kolom id, length, width, height, weight</p>
                 <input type="file" name="csv_file" id="csv_file" class="hidden" accept=".csv,.txt">
                 <button type="button" id="selectFileBtn" class="mt-4 bg-pos-red text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition">

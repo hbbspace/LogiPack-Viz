@@ -20,7 +20,7 @@
                 <p class="text-xs text-gray-400 mt-1">Dibuat: {{ $packing->created_at->format('d/m/Y H:i:s') }}</p>
             </div>
             <div class="text-right">
-                <span class="px-3 py-1 text-sm rounded-full {{ $packing->volume_utilization >= 70 ? 'bg-green-100 text-green-800' : ($packing->volume_utilization >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                <span class="px-3 py-1 text-sm rounded-full {{ $packing->volume_utilization >= 80 ? 'bg-green-100 text-green-800' : ($packing->volume_utilization >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                     Utilisasi: {{ number_format($packing->volume_utilization, 2) }}%
                 </span>
             </div>
@@ -101,7 +101,7 @@
 
             {{-- Paket Terpasang --}}
             <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-3">Paket Terpasang</h2>
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Urutan Paket Terpasang</h2>
                 <div class="space-y-2 max-h-64 overflow-y-auto">
                     @forelse($packing->placedPackages as $pkg)
                     <div class="border-l-4 border-green-500 pl-3 py-1 text-sm">

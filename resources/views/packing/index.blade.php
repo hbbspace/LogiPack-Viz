@@ -118,28 +118,20 @@
     };
     @endif
     
-    // Fungsi estimasi waktu berdasarkan parameter GA
+    // Fungsi estimasi waktu
     function estimateTime(populationSize, generations, numPackages) {
-        // Rumus estimasi berdasarkan data aktual:
-        // - 50 pop, 50 gen, 9 pkg → 25 detik
-        // - 100 pop, 150 gen, 9 pkg → 95 detik
-        // - 100 pop, 150 gen, 39 pkg → 600 detik (10 menit)
+        let exponent = 0.5 + (numPackages / 100);
+        exponent = Math.min(1.0, Math.max(0.5, exponent));
         
-        let baseTime = (populationSize * generations * Math.sqrt(numPackages)) / 100;
+        const workUnit = populationSize * generations * Math.pow(numPackages, exponent);
+        const fastEstimate = workUnit * 0.00103;
+        const slowEstimate = workUnit * 0.005;
         
-        // Kalibrasi berdasarkan jumlah paket
-        if (numPackages <= 10) {
-            baseTime = baseTime * 0.4;  // 9 paket → lebih cepat
-        } else if (numPackages >= 30) {
-            baseTime = baseTime * 1.1;  // 39 paket → lebih lambat
-        } else if (numPackages >= 20) {
-            baseTime = baseTime * 0.7;  // 20-30 paket → sedang
-        }
-        
-        // Batas minimal dan maksimal (15 detik - 30 menit)
-        baseTime = Math.max(15, Math.min(baseTime, 1800));
-        
-        return Math.round(baseTime);
+        return {
+            fast: Math.round(Math.max(10, Math.min(fastEstimate, 1200))),
+            slow: Math.round(Math.max(15, Math.min(slowEstimate, 1800))),
+            exponent: exponent.toFixed(2)
+        };
     }
     
     function formatTime(seconds) {
@@ -148,6 +140,12 @@
         const secs = seconds % 60;
         if (secs === 0) return `${minutes} menit`;
         return `${minutes} menit ${secs} detik`;
+    }
+
+    function formatTimeRange(fastSeconds, slowSeconds) {
+        const fastText = formatTime(fastSeconds);
+        const slowText = formatTime(slowSeconds);
+        return `${fastText} - ${slowText}`;
     }
     
     // Simpan packages dari batch yang dipilih
@@ -273,17 +271,8 @@
             return;
         }
 
-        // Tampilkan modal konfirmasi
-        showConfirmModal(
-            'Konfirmasi Penataan',
-            `Anda akan memproses ${packagesSelected.length} paket. Proses ini mungkin memakan waktu beberapa menit. Lanjutkan?`,
-            () => startPackingProcess(containerSelected, packagesSelected)
-        );
-    });
-        
-    async function startPackingProcess(containerSelected, packagesSelected) {
-         // Hitung estimasi waktu
-        let estimatedSeconds = 30; // default
+        // Hitung estimasi waktu
+        let estimatedSeconds = { fast: 30, slow: 30 }; // default
         if (activeGaParam) {
             estimatedSeconds = estimateTime(
                 activeGaParam.population_size,
@@ -291,6 +280,18 @@
                 packagesSelected.length
             );
         }
+
+        const timeRangeText = formatTimeRange(estimatedSeconds.fast, estimatedSeconds.slow);
+
+        // Tampilkan modal konfirmasi
+        showConfirmModal(
+            'Konfirmasi Penataan',
+            `Anda akan memproses ${packagesSelected.length} paket. Estimasi waktu: ${timeRangeText}. Lanjutkan?`,
+            () => startPackingProcess(containerSelected, packagesSelected, estimatedSeconds)
+        );
+    });
+        
+    async function startPackingProcess(containerSelected, packagesSelected, estimatedSeconds) {
 
         // Tampilkan modal loading
         showLoadingModal(estimatedSeconds, packagesSelected.length);
@@ -311,8 +312,8 @@
             
             // Update progress bar berdasarkan waktu aktual vs estimasi
             const progressBar = document.getElementById('progressBar');
-            if (progressBar && estimatedSeconds > 0) {
-                let progress = Math.min(95, (elapsed / estimatedSeconds) * 100);
+            if (progressBar && estimatedSeconds.slow > 0) {
+                let progress = Math.min(99, (elapsed / estimatedSeconds.slow) * 100);
                 progressBar.style.width = `${progress}%`;
             }
         }, 1000);
@@ -348,7 +349,7 @@
     }
     
     function showLoadingModal(estimatedSeconds, numPackages) {
-        const estimatedText = formatTime(estimatedSeconds);
+        const timeRangeText = formatTimeRange(estimatedSeconds.fast, estimatedSeconds.slow);
         const modalHtml = `
             <div id="loadingModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
                 <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
@@ -357,7 +358,7 @@
                         <h2 class="text-xl font-semibold text-gray-800 mb-2">Sedang Memproses Penataan</h2>
                         <p class="text-gray-600 mb-2">Menjalankan algoritma genetika...</p>
                         <p class="text-sm text-gray-500 mb-1">Jumlah paket: ${numPackages}</p>
-                        <p class="text-sm text-gray-500 mb-3">Estimasi waktu: ~${estimatedText}</p>
+                        <p class="text-sm text-gray-500 mb-3">Estimasi waktu: ${timeRangeText}</p>
                         <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
                             <div id="progressBar" class="bg-pos-red h-2.5 rounded-full" style="width: 0%"></div>
                         </div>

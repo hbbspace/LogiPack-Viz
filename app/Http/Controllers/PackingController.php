@@ -56,6 +56,8 @@ class PackingController extends Controller
             }
             return back()->with('error', 'Paket yang dipilih sudah diproses atau tidak valid');
         }
+
+        $batchImportId = $packages->first()->batch_import_id;
         
         $activeGaParam = GaParameter::getActive() ?? GaParameter::getDefault();
         
@@ -93,7 +95,7 @@ class PackingController extends Controller
         Log::info('Sending to API:', ['api_data' => $apiData]);
         
         try {
-            $response = Http::timeout(config('ga.timeout', 300))
+            $response = Http::timeout(config('ga.timeout', 1800))
                 ->post(config('ga.api_url', 'http://localhost:8001') . '/pack', $apiData);
             
             Log::info('API Response Status: ' . $response->status());
@@ -110,7 +112,7 @@ class PackingController extends Controller
                 try {
                     // 1. Simpan ke tabel packings
                     $packingData = [
-                        'name' => 'Packing ' . now()->format('Y-m-d H:i:s'),
+                        'name' => 'Packing ' . now()->format('d-m-Y H:i:s'),
                         'volume_utilization' => $result['volume_utilization'] ?? 0,
                         'weight_utilization' => $result['weight_utilization'] ?? 0,
                         'fitness_score' => $result['fitness'] ?? 0,
@@ -124,16 +126,19 @@ class PackingController extends Controller
                         'created_by' => $user->id,
                     ];
                     
-                    Log::info('Attempting to save packing with data:', $packingData);
+                    // Log::info('Attempting to save packing with data:', $packingData);
                     
                     $packing = Packing::create($packingData);
                     
-                    Log::info('Packing saved successfully with ID: ' . $packing->id);
+                    // Log::info('Packing saved successfully with ID: ' . $packing->id);
                     
                     // 2. Simpan placed packages ke packing_packages
                     $placedPackages = $result['placed_packages'] ?? [];
                     foreach ($placedPackages as $placed) {
-                        $package = Package::where('tracking_number', $placed['id'])->first();
+                        $package = Package::where('tracking_number', $placed['id'])
+                            ->where('batch_import_id', $batchImportId)
+                            ->first();
+                            
                         if ($package) {
                             PackingPackage::create([
                                 'packing_id' => $packing->id,
@@ -152,7 +157,10 @@ class PackingController extends Controller
                     // 3. Simpan unplaced packages ke packing_packages
                     $unplacedPackages = $result['unplaced_packages'] ?? [];
                     foreach ($unplacedPackages as $unplacedId) {
-                        $package = Package::where('tracking_number', $unplacedId)->first();
+                        $package = Package::where('tracking_number', $unplacedId)
+                            ->where('batch_import_id', $batchImportId)
+                            ->first();
+
                         if ($package) {
                             PackingPackage::create([
                                 'packing_id' => $packing->id,
@@ -233,13 +241,44 @@ class PackingController extends Controller
         ])->findOrFail($id);
 
         $user = Auth::user();
-    
+
         if (!$user->isAdmin() && $packing->user_id !== $user->id) {
             return redirect()->route('dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke hasil penataan ini.');
         }
+
+        $chromosome = $packing->chromosome;
+        $orderMap = [];
         
-        return view('packing.result', compact('packing'));
+        // Pastikan chromosome dalam bentuk array
+        if (is_string($chromosome)) {
+            $chromosome = json_decode($chromosome, true);
+        }
+        
+        if ($chromosome && is_array($chromosome) && count($chromosome) > 0) {
+            // Buat mapping urutan dari chromosome untuk SEMUA paket
+            foreach ($chromosome as $index => $item) {
+                $trackingNumber = $item[0]; // "P016", "P039", dll
+                $orderMap[$trackingNumber] = $index;
+            }
+            
+            // Sort placed packages berdasarkan chromosome
+            $placedPackages = $packing->placedPackages->sortBy(function($package) use ($orderMap) {
+                return $orderMap[$package->tracking_number] ?? PHP_INT_MAX;
+            });
+            
+            // Sort unplaced packages berdasarkan chromosome
+            $unplacedPackages = $packing->unplacedPackages->sortBy(function($package) use ($orderMap) {
+                return $orderMap[$package->tracking_number] ?? PHP_INT_MAX;
+            });
+            
+            // Replace relations
+            $packing->setRelation('placedPackages', $placedPackages);
+            $packing->setRelation('unplacedPackages', $unplacedPackages);
+        }
+        
+        // Kirim orderMap ke view untuk menampilkan nomor urut
+        return view('packing.result', compact('packing', 'orderMap'));
     }
     
     public function history()
