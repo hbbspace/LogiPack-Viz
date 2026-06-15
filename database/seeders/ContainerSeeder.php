@@ -14,11 +14,11 @@ class ContainerSeeder extends Seeder
             [
                 'name' => 'Daihatsu Gran Max Van',
                 'type_code' => 'VAN-SML',
-                'length' => 215,
-                'width' => 150,
-                'height' => 135,
+                'length' => 180,
+                'width' => 125,
+                'height' => 130,
                 'weight_max' => 720,
-                'description' => 'Mobil Van kecil untuk pengiriman ekspres (215x150x135 cm dalam skala model)',
+                'description' => 'Mobil Van kecil untuk pengiriman ekspres (180x125x130 cm dalam skala model)',
                 'is_active' => true,
             ],
             [
