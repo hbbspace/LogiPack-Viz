@@ -40,7 +40,7 @@ class DashboardController extends Controller
         $recentPackings = Packing::where('user_id', $user->id)
             ->with('container')
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(3)
             ->get();
         
         return view('dashboard', compact(

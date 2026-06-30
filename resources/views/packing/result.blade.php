@@ -30,7 +30,37 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- Visualisasi 3D --}}
         <div class="lg:col-span-2 bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Visualisasi 3D</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Visualisasi 3D</h2>
+                
+                {{-- Tombol Detail Visualisasi --}}
+                @php
+                    $vizPathFull = $packing->visualization_file_path;
+                    if (str_starts_with($vizPathFull, '/')) {
+                        $vizPathFull = substr($vizPathFull, 1);
+                    }
+                    $hasFullViz = $vizPathFull && file_exists(public_path($vizPathFull));
+                @endphp
+                
+                @if($hasFullViz)
+                    <a href="{{ route('packing.visualization', $packing->id) }}" 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                        Layar Penuh
+                    </a>
+                @else
+                    <button disabled 
+                            class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                        Layar Penuh Tidak Tersedia
+                    </button>
+                @endif
+            </div>
+            
             <div class="flex-1 w-full" style="min-height: 500px;">
                 @if($packing->visualization_file_path)
                     @php
@@ -101,18 +131,36 @@
 
             {{-- Paket Terpasang --}}
             <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-3">Urutan Paket Terpasang</h2>
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Urutan Paket Termuat</h2>
                 <div class="space-y-2 max-h-64 overflow-y-auto">
                     @forelse($packing->placedPackages as $pkg)
                     <div class="border-l-4 border-green-500 pl-3 py-1 text-sm">
                         <div class="font-medium">{{ $pkg->tracking_number }}</div>
                         <div class="text-gray-500 text-xs">
                             Posisi: ({{ $pkg->pivot->position_x }}, {{ $pkg->pivot->position_y }}, {{ $pkg->pivot->position_z }})
-                            | Orientasi: {{ $pkg->pivot->orientation }}
+                            | Orientasi: 
+                            @php
+                                // Mapping orientasi ke dimensi aktual
+                                $orientation = $pkg->pivot->orientation;
+                                $length = $pkg->length;
+                                $width = $pkg->width;
+                                $height = $pkg->height;
+                                
+                                $dims = match($orientation) {
+                                    1 => "{$length} x {$width} x {$height}",
+                                    2 => "{$length} x {$height} x {$width}",
+                                    3 => "{$width} x {$length} x {$height}",
+                                    4 => "{$width} x {$height} x {$length}",
+                                    5 => "{$height} x {$length} x {$width}",
+                                    6 => "{$height} x {$width} x {$length}",
+                                    default => "Unknown"
+                                };
+                            @endphp
+                            <span class="orientation-badge">{{ $dims }}</span>
                         </div>
                     </div>
                     @empty
-                    <div class="text-center text-gray-500 py-4">Tidak ada paket terpasang</div>
+                    <div class="text-center text-gray-500 py-4">Tidak ada paket termuat</div>
                     @endforelse
                 </div>
             </div>
@@ -120,7 +168,7 @@
             {{-- Paket Tidak Terpasang --}}
             @if($packing->unplacedPackages->count() > 0)
             <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4">
-                <h2 class="font-semibold text-yellow-800 mb-2">Paket Tidak Terpasang</h2>
+                <h2 class="font-semibold text-yellow-800 mb-2">Paket Tidak Termuat</h2>
                 <div class="space-y-1 max-h-32 overflow-y-auto">
                     @foreach($packing->unplacedPackages as $pkg)
                     <div class="text-sm text-yellow-700">• {{ $pkg->tracking_number }}</div>

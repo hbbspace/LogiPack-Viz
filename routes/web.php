@@ -28,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/packing', [PackingController::class, 'index'])->name('packing.index');
     Route::post('/packing/process', [PackingController::class, 'process'])->name('packing.process');
     Route::get('/packing/result/{id}', [PackingController::class, 'result'])->name('packing.result');
+    Route::get('/packing/result/{id}/visualization', [PackingController::class, 'visualization'])->name('packing.visualization');
     Route::get('/packing/history', [PackingController::class, 'history'])->name('packing.history');
 });
 

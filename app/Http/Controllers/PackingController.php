@@ -97,6 +97,7 @@ class PackingController extends Controller
         try {
             $response = Http::timeout(config('ga.timeout', 1800))
                 ->post(config('ga.api_url', 'http://localhost:8001') . '/pack', $apiData);
+                // ->post(config('ga.api_url', 'https://0b81-103-182-234-226.ngrok-free.app') . '/pack', $apiData);
             
             Log::info('API Response Status: ' . $response->status());
             
@@ -301,5 +302,26 @@ class PackingController extends Controller
         }
         
         return view('packing.history', compact('packings'));
+    }
+
+    public function visualization($id)
+    {
+        $packing = Packing::findOrFail($id);
+        
+        $user = Auth::user();
+        if (!$user->isAdmin() && $packing->user_id !== $user->id) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Anda tidak memiliki akses ke visualisasi ini.');
+        }
+        
+        // Cek apakah file full tersedia
+        $vizPath = $packing->visualization_file_path;
+        if (str_starts_with($vizPath, '/')) {
+            $vizPath = substr($vizPath, 1);
+        }
+        
+        $fileExists = $vizPath && file_exists(public_path($vizPath));
+        
+        return view('packing.visualization', compact('packing', 'fileExists'));
     }
 }
